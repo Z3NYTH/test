@@ -1,9 +1,10 @@
-
 from __future__ import annotations
-from math import sqrt, inf
-from ..vec3 import Vec3, EPSILON
-from ..ray import Ray
+
+from math import acos, atan2, inf, sqrt, pi
+
 from ..hit import Hit
+from ..ray import Ray
+from ..vec3 import EPSILON, Vec3
 from .base import Object3D
 
 
@@ -13,24 +14,27 @@ class Sphere(Object3D):
         self.center = center
         self.radius = radius
 
-    def Centre(self, p: Vec3): self.center = p
+    def Centre(self, p: Vec3):
+        self.center = p
 
-    def SphereRayon(self, r: float): self.radius = r
+    def SphereRayon(self, r: float):
+        self.radius = r
 
-    def Normale(self, p: Vec3) -> Vec3: return (p - self.center).normalize()
+    def Normale(self, p: Vec3) -> Vec3:
+        return (p - self.center).normalize()
 
     def intersection(self, ray: Ray) -> Hit:
         oc = ray.origin - self.center
         a = ray.direction.dot(ray.direction)
         b = 2.0 * oc.dot(ray.direction)
         c = oc.dot(oc) - self.radius * self.radius
-        disc = b*b - 4.0*a*c
+        disc = b * b - 4.0 * a * c
         h = Hit()
         if disc < 0:
             return h
         sqrt_disc = sqrt(disc)
-        t1 = (-b - sqrt_disc)/(2.0*a)
-        t2 = (-b + sqrt_disc)/(2.0*a)
+        t1 = (-b - sqrt_disc) / (2.0 * a)
+        t2 = (-b + sqrt_disc) / (2.0 * a)
         t = inf
         for cand in (t1, t2):
             if cand > EPSILON and cand < t:
@@ -39,9 +43,16 @@ class Sphere(Object3D):
             return h
         p = ray.origin + ray.direction * t
         n = self.Normale(p)
+
+        # Calculate spherical coordinates for UV
+        phi = atan2(p.z - self.center.z, p.x - self.center.x)
+        theta = acos((p.y - self.center.y) / self.radius)
+
         h.t = t
         h.point = p
         h.normal = n
+        h.u = 1.0 - (phi + pi) / (2.0 * pi)
+        h.v = theta / pi
         h.obj = self
         if ray.direction.dot(n) > 0:
             n = -n

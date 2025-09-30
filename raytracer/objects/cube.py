@@ -1,14 +1,13 @@
-
 from __future__ import annotations
-from dataclasses import dataclass
-from ..vec3 import Vec3, EPSILON
-from ..ray import Ray
+
 from ..hit import Hit
+from ..ray import Ray
+from ..vec3 import EPSILON, Vec3
 from .base import Object3D
 
 
 def _min3(a: float, b: float, c: float) -> float:
-    return a if a <= b and a <= c else (b if b <= c else c)
+    return a if a <= b and a <= c else (min(b, c))
 
 
 class Cube(Object3D):
@@ -20,11 +19,14 @@ class Cube(Object3D):
         self.mn = Vec3(min(mn.x, mx.x), min(mn.y, mx.y), min(mn.z, mx.z))
         self.mx = Vec3(max(mn.x, mx.x), max(mn.y, mx.y), max(mn.z, mx.z))
 
-    def CoinMin(self, p: Vec3): self.mn = p
-    def CoinMax(self, p: Vec3): self.mx = p
+    def CoinMin(self, p: Vec3):
+        self.mn = p
+
+    def CoinMax(self, p: Vec3):
+        self.mx = p
 
     def DepuisCentreEtTaille(self, c: Vec3, sx: float, sy: float, sz: float):
-        hx, hy, hz = sx*0.5, sy*0.5, sz*0.5
+        hx, hy, hz = sx * 0.5, sy * 0.5, sz * 0.5
         self.mn = Vec3(c.x - hx, c.y - hy, c.z - hz)
         self.mx = Vec3(c.x + hx, c.y + hy, c.z + hz)
 
@@ -32,9 +34,9 @@ class Cube(Object3D):
         o = ray.origin
         d = ray.direction
         # méthode des Slabs
-        invx = 1.0 / d.x if abs(d.x) > EPSILON else float('inf')
-        invy = 1.0 / d.y if abs(d.y) > EPSILON else float('inf')
-        invz = 1.0 / d.z if abs(d.z) > EPSILON else float('inf')
+        invx = 1.0 / d.x if abs(d.x) > EPSILON else float("inf")
+        invy = 1.0 / d.y if abs(d.y) > EPSILON else float("inf")
+        invz = 1.0 / d.z if abs(d.z) > EPSILON else float("inf")
 
         tx1 = (self.mn.x - o.x) * invx
         tx2 = (self.mx.x - o.x) * invx
@@ -51,8 +53,7 @@ class Cube(Object3D):
         if tmin_y > tmin:
             tmin = tmin_y
             side_min = side_min_y
-        if tmax_y < tmax:
-            tmax = tmax_y
+        tmax = min(tmax, tmax_y)
 
         tz1 = (self.mn.z - o.z) * invz
         tz2 = (self.mx.z - o.z) * invz
@@ -63,8 +64,7 @@ class Cube(Object3D):
         if tmin_z > tmin:
             tmin = tmin_z
             side_min = side_min_z
-        if tmax_z < tmax:
-            tmax = tmax_z
+        tmax = min(tmax, tmax_z)
 
         h = Hit()
         if tmax < EPSILON or tmin > tmax:  # no hit or behind
@@ -89,6 +89,16 @@ class Cube(Object3D):
             n = Vec3(0, 0, -1)
         else:
             n = Vec3(0, 0, 1)
+
+        if side_min == 0 or side_min == 1:  # X-facing faces
+            h.u = (p.z - self.mn.z) / (self.mx.z - self.mn.z)
+            h.v = (p.y - self.mn.y) / (self.mx.y - self.mn.y)
+        elif side_min == 2 or side_min == 3:  # Y-facing faces
+            h.u = (p.x - self.mn.x) / (self.mx.x - self.mn.x)
+            h.v = (p.z - self.mn.z) / (self.mx.z - self.mn.z)
+        else:  # Z-facing faces
+            h.u = (p.x - self.mn.x) / (self.mx.x - self.mn.x)
+            h.v = (p.y - self.mn.y) / (self.mx.y - self.mn.y)
 
         h.t = t
         h.point = p
